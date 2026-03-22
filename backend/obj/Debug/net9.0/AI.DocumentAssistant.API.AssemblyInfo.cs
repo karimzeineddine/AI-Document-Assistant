@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AI.DocumentAssistant.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ba6eca34548639d71fbfe22c8814c26763dab2c5")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3974bbe3290d21fad032d6d45d8f8e4333c07186")]
 [assembly: System.Reflection.AssemblyProductAttribute("AI.DocumentAssistant.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AI.DocumentAssistant.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
