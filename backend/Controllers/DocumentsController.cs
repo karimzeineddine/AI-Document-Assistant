@@ -21,19 +21,29 @@ namespace AI.DocumentAssistant.API.Controllers
             if (file == null || file.Length == 0)
                 return BadRequest("No file uploaded");
 
+            var allowedExtensions = new[] { ".pdf", ".docx", ".txt" };
+
+            var extension = Path.GetExtension(file.FileName).ToLower();
+
+            if (!allowedExtensions.Contains(extension))
+                return BadRequest("Invalid file type");
+            if (file.Length > 10 * 1024 * 1024) // 10MB
+                return BadRequest("File too large");
+                
             var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
 
             if (!Directory.Exists(uploadsFolder))
                 Directory.CreateDirectory(uploadsFolder);
 
-            var fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
-            var filePath = Path.Combine(uploadsFolder, fileName);
+            var fileName = $"{Guid.NewGuid()}_{file.FileName}";
+            var filePath = $"Uploads/{fileName}";
 
             // Save file to disk
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
                 await file.CopyToAsync(stream);
             }
+
 
             var document = new Document
             {
