@@ -66,10 +66,5 @@ namespace AI.DocumentAssistant.API.Controllers
                 fullName = user.FullName
             });
         }
-        [HttpGet("test")]
-        public IActionResult Test()
-        {
-            return Ok("Auth controller works");
-        }
     }
 }
