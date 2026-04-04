@@ -3,11 +3,13 @@ namespace AI.DocumentAssistant.API.Models
     public class DocumentChunk
     {
         public Guid Id { get; set; }
+
         public Guid DocumentId { get; set; }
 
-        public string Content { get; set; }
-        public string EmbeddingId { get; set; }
+        public string Content { get; set; } = null!;
 
-        public Document Document { get; set; }
+        public int ChunkIndex { get; set; }
+
+        public Document Document { get; set; } = null!;
     }
 }
