@@ -3,6 +3,7 @@ using System;
 using AI.DocumentAssistant.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AI.DocumentAssistant.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260404093252_AddDocumentContent")]
+    partial class AddDocumentContent
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -81,15 +84,16 @@ namespace AI.DocumentAssistant.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<int>("ChunkIndex")
-                        .HasColumnType("integer");
-
                     b.Property<string>("Content")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<Guid>("DocumentId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("EmbeddingId")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 

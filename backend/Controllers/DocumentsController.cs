@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using AI.DocumentAssistant.API.Data;
 using AI.DocumentAssistant.API.Models;
+using AI.DocumentAssistant.API.Helpers;
 
 namespace AI.DocumentAssistant.API.Controllers
 {
@@ -20,7 +21,7 @@ namespace AI.DocumentAssistant.API.Controllers
         {
             if (file == null || file.Length == 0)
                 return BadRequest("No file uploaded");
-
+            
             var allowedExtensions = new[] { ".pdf", ".docx", ".txt" };
 
             var extension = Path.GetExtension(file.FileName).ToLower();
@@ -29,37 +30,54 @@ namespace AI.DocumentAssistant.API.Controllers
                 return BadRequest("Invalid file type");
             if (file.Length > 10 * 1024 * 1024) // 10MB
                 return BadRequest("File too large");
-                
+
             var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
 
             if (!Directory.Exists(uploadsFolder))
                 Directory.CreateDirectory(uploadsFolder);
 
             var fileName = $"{Guid.NewGuid()}_{file.FileName}";
-            var filePath = $"Uploads/{fileName}";
+            var filePath = Path.Combine(uploadsFolder, fileName);
 
-            // Save file to disk
+            // Save file
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
                 await file.CopyToAsync(stream);
             }
 
+            // 🔥 Extract text
+            var extractedText = TextExtractor.ExtractText(filePath);
+
+            // 🔥 Split into chunks
+            var chunks = TextChunker.SplitText(extractedText);
 
             var document = new Document
             {
                 Id = Guid.NewGuid(),
                 FileName = file.FileName,
-                FilePath = filePath,
+                FilePath = $"Uploads/{fileName}",
                 UserId = userId,
-                Status = "Processing", // 🔥 important for next steps
+                Status = "Ready", // 🔥 now ready immediately
+                Content = extractedText
             };
 
             _context.Documents.Add(document);
             await _context.SaveChangesAsync();
 
+            var documentChunks = chunks.Select((chunk, index) => new DocumentChunk
+            {
+                Id = Guid.NewGuid(),
+                DocumentId = document.Id,
+                Content = chunk,
+                ChunkIndex = index
+            }).ToList();
+
+            _context.DocumentChunks.AddRange(documentChunks);
+            await _context.SaveChangesAsync();
+
             return Ok(new
             {
-                message = "File uploaded successfully",
+                message = "File uploaded & processed",
                 documentId = document.Id
             });
         }
