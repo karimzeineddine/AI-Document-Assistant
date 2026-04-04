@@ -21,6 +21,15 @@ namespace AI.DocumentAssistant.API.Controllers
         {
             if (file == null || file.Length == 0)
                 return BadRequest("No file uploaded");
+            
+            var allowedExtensions = new[] { ".pdf", ".docx", ".txt" };
+
+            var extension = Path.GetExtension(file.FileName).ToLower();
+
+            if (!allowedExtensions.Contains(extension))
+                return BadRequest("Invalid file type");
+            if (file.Length > 10 * 1024 * 1024) // 10MB
+                return BadRequest("File too large");
 
             var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
 
