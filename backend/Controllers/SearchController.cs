@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using AI.DocumentAssistant.API.Data;
 using AI.DocumentAssistant.API.DTOs;
+using AI.DocumentAssistant.API.Helpers;
+using AI.DocumentAssistant.API.Services;
 
 namespace AI.DocumentAssistant.API.Controllers
 {
@@ -10,10 +12,12 @@ namespace AI.DocumentAssistant.API.Controllers
     public class SearchController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly EmbeddingService _embeddingService;
 
-        public SearchController(AppDbContext context)
+        public SearchController(AppDbContext context, EmbeddingService embeddingService)
         {
             _context = context;
+            _embeddingService = embeddingService;
         }
 
         [HttpPost("ask")]
@@ -23,27 +27,22 @@ namespace AI.DocumentAssistant.API.Controllers
                 return BadRequest("Question is required");
 
             var chunks = await _context.DocumentChunks
-                .Include(c => c.Document)
                 .Where(c => c.Document.UserId == request.UserId)
                 .ToListAsync();
 
-            var keywords = request.Question
-                .ToLower()
-                .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var queryEmbedding = await _embeddingService.GetEmbedding(request.Question);
 
-            var results = chunks
+            var rankedChunks = chunks
                 .Select(c => new
                 {
-                    Chunk = c,
-                    Score = keywords.Count(k => c.Content.ToLower().Contains(k))
+                    Content = c.Content,
+                    Score = EmbeddingHelper.CosineSimilarity(queryEmbedding, c.Embedding)
                 })
-                .Where(x => x.Score > 0)
                 .OrderByDescending(x => x.Score)
-                .Take(5)
-                .Select(x => x.Chunk)
-                .ToList();
+                .Take(3)
+                .Select(x => x.Content);
 
-            if (!results.Any())
+            if (!rankedChunks.Any())
             {
                 return Ok(new
                 {
@@ -53,7 +52,7 @@ namespace AI.DocumentAssistant.API.Controllers
 
             return Ok(new
             {
-                answer = string.Join("\n\n", results.Select(r => r.Content))
+                answer = string.Join("\n\n", rankedChunks)
             });
         }
     }

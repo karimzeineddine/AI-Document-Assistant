@@ -10,6 +10,8 @@ namespace AI.DocumentAssistant.API.Models
 
         public int ChunkIndex { get; set; }
 
+        public List<float> Embedding { get; set; }
+
         public Document Document { get; set; } = null!;
     }
 }
