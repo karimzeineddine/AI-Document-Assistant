@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using AI.DocumentAssistant.API.Data;
 using AI.DocumentAssistant.API.Models;
 using AI.DocumentAssistant.API.Helpers;
+using AI.DocumentAssistant.API.Services;
 
 namespace AI.DocumentAssistant.API.Controllers
 {
@@ -10,10 +11,12 @@ namespace AI.DocumentAssistant.API.Controllers
     public class DocumentsController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly EmbeddingService _embeddingService;
 
-        public DocumentsController(AppDbContext context)
+        public DocumentsController(AppDbContext context, EmbeddingService embeddingService)
         {
             _context = context;
+            _embeddingService = embeddingService;
         }
 
         [HttpPost("upload")]
@@ -21,7 +24,7 @@ namespace AI.DocumentAssistant.API.Controllers
         {
             if (file == null || file.Length == 0)
                 return BadRequest("No file uploaded");
-            
+
             var allowedExtensions = new[] { ".pdf", ".docx", ".txt" };
 
             var extension = Path.GetExtension(file.FileName).ToLower();
@@ -64,13 +67,24 @@ namespace AI.DocumentAssistant.API.Controllers
             _context.Documents.Add(document);
             await _context.SaveChangesAsync();
 
-            var documentChunks = chunks.Select((chunk, index) => new DocumentChunk
+            var documentChunks = new List<DocumentChunk>();
+
+            for (int i = 0; i < chunks.Count; i++)
             {
-                Id = Guid.NewGuid(),
-                DocumentId = document.Id,
-                Content = chunk,
-                ChunkIndex = index
-            }).ToList();
+                var chunk = chunks[i];
+
+                // 🔥 Generate embedding
+                var embedding = await _embeddingService.GetEmbedding(chunk);
+
+                documentChunks.Add(new DocumentChunk
+                {
+                    Id = Guid.NewGuid(),
+                    DocumentId = document.Id,
+                    Content = chunk,
+                    ChunkIndex = i,
+                    Embedding = embedding
+                });
+            }
 
             _context.DocumentChunks.AddRange(documentChunks);
             await _context.SaveChangesAsync();
