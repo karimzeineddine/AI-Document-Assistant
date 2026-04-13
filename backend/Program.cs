@@ -9,6 +9,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddControllers();
 builder.Services.AddScoped<EmbeddingService>();
+builder.Services.AddHttpClient<AIService>();
 
 var app = builder.Build();
 

@@ -13,11 +13,13 @@ namespace AI.DocumentAssistant.API.Controllers
     {
         private readonly AppDbContext _context;
         private readonly EmbeddingService _embeddingService;
+        private readonly AIService _aiService;
 
-        public SearchController(AppDbContext context, EmbeddingService embeddingService)
+        public SearchController(AppDbContext context, EmbeddingService embeddingService, AIService aiService)
         {
             _context = context;
             _embeddingService = embeddingService;
+            _aiService = aiService;
         }
 
         [HttpPost("ask")]
@@ -42,7 +44,9 @@ namespace AI.DocumentAssistant.API.Controllers
                 .Take(3)
                 .Select(x => x.Content);
 
-            if (!rankedChunks.Any())
+            var topChunks = rankedChunks.ToList();
+
+            if (!topChunks.Any())
             {
                 return Ok(new
                 {
@@ -50,9 +54,12 @@ namespace AI.DocumentAssistant.API.Controllers
                 });
             }
 
+            // 🔥 Call AI
+            var aiAnswer = await _aiService.GenerateAnswer(request.Question, topChunks);
+
             return Ok(new
             {
-                answer = string.Join("\n\n", rankedChunks)
+                answer = aiAnswer
             });
         }
     }
