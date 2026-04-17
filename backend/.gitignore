@@ -3,4 +3,5 @@ obj/
 *.user
 .vs/
 appsettings.Development.json
+appsettings.json
 Uploads/

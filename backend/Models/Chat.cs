@@ -8,5 +8,6 @@ namespace AI.DocumentAssistant.API.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public User User { get; set; }
+        public List<Message> Messages { get; set; } = new();
     }
 }

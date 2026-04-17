@@ -21,26 +21,14 @@ namespace AI.DocumentAssistant.API.Services
             var requestBody = new
             {
                 model = "nvidia/llama-nemotron-embed-vl-1b-v2:free",
-                input = new[]
-                {
-                    new
-                    {
-                        content = new[]
-                        {
-                            new { type = "text", text = text }
-                        }
-                    }
-                },
-                encoding_format = "float"
+                input = text
             };
 
-            var request = new HttpRequestMessage(
-                HttpMethod.Post,
-                "https://openrouter.ai/api/v1/embeddings"
-            );
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://openrouter.ai/api/v1/embeddings");
 
-            request.Headers.Authorization =
-                new AuthenticationHeaderValue("Bearer", _apiKey);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+            request.Headers.Add("HTTP-Referer", "http://localhost");
+            request.Headers.Add("X-Title", "AI Document Assistant");
 
             request.Content = new StringContent(
                 JsonSerializer.Serialize(requestBody),
@@ -51,22 +39,19 @@ namespace AI.DocumentAssistant.API.Services
             var response = await _httpClient.SendAsync(request);
             var json = await response.Content.ReadAsStringAsync();
 
-            Console.WriteLine(json); // debug
-
+            Console.WriteLine(json); // 🔥 DEBUG
+            Console.WriteLine("API KEY: " + _apiKey);
+            Console.WriteLine(request.Headers.Authorization);
             using var doc = JsonDocument.Parse(json);
 
-            if (doc.RootElement.TryGetProperty("error", out var error))
-            {
-                throw new Exception(error.ToString());
-            }
+            if (!doc.RootElement.TryGetProperty("data", out var data))
+                throw new Exception("Embedding error: " + json);
 
-            var embedding = doc
-                .RootElement
-                .GetProperty("data")[0]
-                .GetProperty("embedding");
+            var embeddingArray = data[0].GetProperty("embedding");
 
-            // ✅ Deserialize JSON array to List<float>
-            return JsonSerializer.Deserialize<List<float>>(embedding.GetRawText())!;
+            return embeddingArray.EnumerateArray()
+                .Select(x => x.GetSingle())
+                .ToList();
         }
     }
 }
