@@ -14,44 +14,36 @@ public class AIService
                 ?? throw new Exception("OpenRouter API key missing");
     }
 
-    public async Task<string> GenerateAnswer(string question, List<string> chunks)
+    public async Task<string> GenerateAnswer(List<ChatMessageDto> messages)
     {
-        var context = string.Join("\n\n", chunks);
-
-        var prompt = $@"
-        You are a helpful AI assistant.
-
-        Answer the question clearly and concisely using ONLY the context provided.
-        If the answer is not in the context, say: ""I don't know based on the provided information.""
-
-        Context:
-        {context}
-
-        Question:
-        {question}
-
-        Helpful Answer:
-        ";
-
         var requestBody = new
         {
-            model = "openai/gpt-3.5-turbo", // free/cheap model
-            messages = new[]
+            model = "openai/gpt-3.5-turbo",
+            messages = messages.Select(m => new
             {
-                new { role = "user", content = prompt }
-            }
+                role = m.Role,
+                content = m.Content
+            })
         };
 
         var request = new HttpRequestMessage(HttpMethod.Post, "https://openrouter.ai/api/v1/chat/completions");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-        request.Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+        request.Content = new StringContent(
+            JsonSerializer.Serialize(requestBody),
+            Encoding.UTF8,
+            "application/json"
+        );
 
         var response = await _httpClient.SendAsync(request);
         var json = await response.Content.ReadAsStringAsync();
 
         using var doc = JsonDocument.Parse(json);
-        var answer = doc.RootElement
-            .GetProperty("choices")[0]
+
+        // ⚠️ safer parsing
+        if (!doc.RootElement.TryGetProperty("choices", out var choices))
+            throw new Exception("Invalid AI response: " + json);
+
+        var answer = choices[0]
             .GetProperty("message")
             .GetProperty("content")
             .GetString();

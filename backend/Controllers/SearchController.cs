@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using AI.DocumentAssistant.API.Data;
 using AI.DocumentAssistant.API.DTOs;
-using AI.DocumentAssistant.API.Helpers;
+using AI.DocumentAssistant.API.Models;
 using AI.DocumentAssistant.API.Services;
 
 namespace AI.DocumentAssistant.API.Controllers
@@ -28,37 +28,81 @@ namespace AI.DocumentAssistant.API.Controllers
             if (string.IsNullOrEmpty(request.Question))
                 return BadRequest("Question is required");
 
+            // 🔥 STEP 1: Get or create chat
+            var chat = await _context.Chats
+                .FirstOrDefaultAsync(c => c.Id == request.ChatId);
+
+            if (chat == null)
+            {
+                chat = new Chat
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = request.UserId
+                };
+
+                _context.Chats.Add(chat);
+                await _context.SaveChangesAsync();
+            }
+
+            // 🔥 STEP 2: Save user message
+            _context.Messages.Add(new Message
+            {
+                ChatId = chat.Id,
+                Role = Message.MessageRole.User,
+                Content = request.Question
+            });
+
+            await _context.SaveChangesAsync();
+
+            // 🔥 STEP 3: Get chat history
+            var history = await _context.Messages
+                .Where(m => m.ChatId == chat.Id)
+                .OrderByDescending(m => m.CreatedAt)
+                .Take(10)
+                .OrderBy(m => m.CreatedAt)
+                .ToListAsync();
+
+            // 🔥 STEP 4: Convert to AI format
+            var messages = history.Select(m => new ChatMessageDto
+            {
+                Role = m.Role == Message.MessageRole.User ? "user" : "assistant",
+                Content = m.Content
+            }).ToList();
+
+            // 🔥 STEP 5: RAG search (your existing logic)
             var chunks = await _context.DocumentChunks
                 .Where(c => c.Document.UserId == request.UserId)
                 .ToListAsync();
 
-            var queryEmbedding = await _embeddingService.GetEmbedding(request.Question);
-
-            var rankedChunks = chunks
-                .Select(c => new
-                {
-                    Content = c.Content,
-                    Score = EmbeddingHelper.CosineSimilarity(queryEmbedding, c.Embedding)
-                })
-                .OrderByDescending(x => x.Score)
+            var context = string.Join("\n\n", chunks
+                .Where(c => c.Content.ToLower().Contains(request.Question.ToLower()))
                 .Take(3)
-                .Select(x => x.Content);
+                .Select(c => c.Content));
 
-            var topChunks = rankedChunks.ToList();
-
-            if (!topChunks.Any())
+            // Inject context
+            messages.Insert(0, new ChatMessageDto
             {
-                return Ok(new
-                {
-                    answer = "No relevant information found."
-                });
-            }
+                Role = "system",
+                Content = $"Use this context to answer:\n{context}"
+            });
 
-            // 🔥 Call AI
-            var aiAnswer = await _aiService.GenerateAnswer(request.Question, topChunks);
+            // 🔥 STEP 6: Call AI (you already have this)
+            var aiAnswer = await _aiService.GenerateAnswer(messages);
 
+            // 🔥 STEP 7: Save AI response
+            _context.Messages.Add(new Message
+            {
+                ChatId = chat.Id,
+                Role = Message.MessageRole.Assistant,
+                Content = aiAnswer
+            });
+
+            await _context.SaveChangesAsync();
+
+            // 🔥 STEP 8: Return result
             return Ok(new
             {
+                chatId = chat.Id,
                 answer = aiAnswer
             });
         }
