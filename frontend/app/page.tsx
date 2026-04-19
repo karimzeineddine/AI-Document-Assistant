@@ -29,13 +29,8 @@ export default function LoginPage() {
       body: JSON.stringify({ email, password }),
     })
 
-    console.log("Login response:", data) // ← add this
-
     if (data.token) {
       saveToken(data.token)
-      console.log("Token saved:", localStorage.getItem("token")) // ← and this
-    } else {
-      console.log("No token in response!") // ← this will tell us the field is wrong
     }
 
     router.push("/dashboard")
