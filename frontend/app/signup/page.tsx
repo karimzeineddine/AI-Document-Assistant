@@ -15,14 +15,45 @@ export default function SignupPage() {
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const [error, setError] = useState("")
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+
+  try {
     setIsLoading(true)
-    // Simulate signup
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    setError("")
+
+    const res = await fetch("http://localhost:5071/api/auth/signup", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        fullName: name,
+        email,
+        password,
+      }),
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      throw new Error(data.message || "Registration failed")
+    }
+
+    // If backend returns token
+    if (data.token) {
+      localStorage.setItem("token", data.token)
+    }
+
     router.push("/dashboard")
+  } catch (err: any) {
+    setError(err.message)
+  } finally {
+    setIsLoading(false)
   }
+}
 
   const passwordRequirements = [
     { label: "At least 8 characters", met: password.length >= 8 },
@@ -212,7 +243,9 @@ export default function SignupPage() {
                 </Link>
               </label>
             </div>
-
+            {error && (
+  <p className="text-sm text-red-500">{error}</p>
+)}
             <Button 
               type="submit" 
               className="w-full h-11"
