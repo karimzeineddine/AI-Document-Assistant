@@ -1,5 +1,6 @@
 "use client"
-
+import { apiRequest } from "@/lib/api"
+import { saveToken } from "@/lib/auth"
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -15,14 +16,41 @@ export default function SignupPage() {
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const [error, setError] = useState("")
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    // Simulate signup
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    router.push("/dashboard")
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+
+  // Client-side validation: block submission if password requirements aren't met
+  if (!passwordRequirements.every((req) => req.met)) {
+    setError("Please meet all password requirements before continuing.")
+    return
   }
+
+  try {
+    setIsLoading(true)
+    setError("")
+
+    const data = await apiRequest("/auth/signup", {
+      method: "POST",
+      body: JSON.stringify({
+        fullName: name,
+        email,
+        password,
+      }),
+    })
+
+    if (data.token) {
+      saveToken(data.token)
+    }
+
+    router.push("/dashboard")
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Registration failed")
+  } finally {
+    setIsLoading(false)
+  }
+}
 
   const passwordRequirements = [
     { label: "At least 8 characters", met: password.length >= 8 },
@@ -212,7 +240,9 @@ export default function SignupPage() {
                 </Link>
               </label>
             </div>
-
+            {error && (
+  <p className="text-sm text-red-500">{error}</p>
+)}
             <Button 
               type="submit" 
               className="w-full h-11"
