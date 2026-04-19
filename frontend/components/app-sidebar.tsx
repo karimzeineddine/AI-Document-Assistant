@@ -29,6 +29,8 @@ import {
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useRouter } from "next/navigation"
+import { logout } from "@/lib/auth"
 
 const mainNavItems = [
   {
@@ -61,7 +63,12 @@ const recentChats = [
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
 
+const handleLogout = () => {
+  logout()
+  router.push("/")
+}
   return (
     <Sidebar className="border-r border-sidebar-border">
       <SidebarHeader className="p-4">
@@ -153,10 +160,10 @@ export function AppSidebar() {
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="Logout" className="text-muted-foreground hover:text-destructive">
-              <Link href="/">
+              <button onClick={handleLogout}>
                 <LogOut className="h-4 w-4" />
                 <span>Logout</span>
-              </Link>
+              </button>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
