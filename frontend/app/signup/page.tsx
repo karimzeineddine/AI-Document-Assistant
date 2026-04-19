@@ -1,5 +1,6 @@
 "use client"
-
+import { apiRequest } from "@/lib/api"
+import { saveToken } from "@/lib/auth"
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -20,15 +21,18 @@ export default function SignupPage() {
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault()
 
+  // Client-side validation: block submission if password requirements aren't met
+  if (!passwordRequirements.every((req) => req.met)) {
+    setError("Please meet all password requirements before continuing.")
+    return
+  }
+
   try {
     setIsLoading(true)
     setError("")
 
-    const res = await fetch("http://localhost:5071/api/auth/signup", {
+    const data = await apiRequest("/auth/signup", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify({
         fullName: name,
         email,
@@ -36,20 +40,13 @@ const handleSubmit = async (e: React.FormEvent) => {
       }),
     })
 
-    const data = await res.json()
-
-    if (!res.ok) {
-      throw new Error(data.message || "Registration failed")
-    }
-
-    // If backend returns token
     if (data.token) {
-      localStorage.setItem("token", data.token)
+      saveToken(data.token)
     }
 
     router.push("/dashboard")
-  } catch (err: any) {
-    setError(err.message)
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Registration failed")
   } finally {
     setIsLoading(false)
   }
