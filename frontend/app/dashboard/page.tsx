@@ -1,3 +1,5 @@
+"use client"
+
 import { Plus, Upload } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -6,8 +8,13 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { StatsCards } from "@/components/stats-cards"
 import { DocumentsTable } from "@/components/documents-table"
+import { useRequireAuth } from "@/lib/useRequireAuth"
 
 export default function DashboardPage() {
+   const { checking } = useRequireAuth()
+
+  if (checking) return <div className="flex h-screen items-center justify-center"><span className="text-muted-foreground">Loading...</span></div>
+
   return (
     <SidebarProvider>
       <AppSidebar />
