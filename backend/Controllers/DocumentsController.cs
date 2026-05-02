@@ -3,9 +3,12 @@ using AI.DocumentAssistant.API.Data;
 using AI.DocumentAssistant.API.Models;
 using AI.DocumentAssistant.API.Helpers;
 using AI.DocumentAssistant.API.Services;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace AI.DocumentAssistant.API.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class DocumentsController : ControllerBase
@@ -20,8 +23,15 @@ namespace AI.DocumentAssistant.API.Controllers
         }
 
         [HttpPost("upload")]
-        public async Task<IActionResult> Upload(IFormFile file, Guid userId)
+        public async Task<IActionResult> Upload(IFormFile file)
         {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (userIdClaim == null)
+                return Unauthorized("Invalid token");
+
+            var userId = Guid.Parse(userIdClaim);
+
             if (file == null || file.Length == 0)
                 return BadRequest("No file uploaded");
 

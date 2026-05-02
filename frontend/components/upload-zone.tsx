@@ -18,6 +18,64 @@ export function UploadZone() {
   const [isDragging, setIsDragging] = useState(false)
   const [files, setFiles] = useState<UploadFile[]>([])
 
+  const uploadFileToBackend = async (file: File) => {
+    const id = Math.random().toString(36).substr(2, 9)
+
+    const newFile: UploadFile = {
+      id,
+      name: file.name,
+      size: file.size,
+      progress: 0,
+      status: "uploading",
+    }
+
+    setFiles((prev) => [...prev, newFile])
+
+    try {
+      const token = localStorage.getItem("token")
+
+      if (!token) {
+        throw new Error("User not authenticated")
+      }
+
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/documents/upload`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`, // ✅ JWT here
+          },
+          body: formData,
+        }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || "Upload failed")
+      }
+
+      // ✅ success
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === id ? { ...f, progress: 100, status: "complete" } : f
+        )
+      )
+
+    } catch (error) {
+      console.error(error)
+
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === id ? { ...f, status: "error" } : f
+        )
+      )
+    }
+  }
+
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(true)
@@ -28,56 +86,18 @@ export function UploadZone() {
     setIsDragging(false)
   }, [])
 
-  const simulateUpload = (file: File) => {
-    const uploadFile: UploadFile = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: file.name,
-      size: file.size,
-      progress: 0,
-      status: "uploading",
-    }
-
-    setFiles((prev) => [...prev, uploadFile])
-
-    // Simulate progress
-    const interval = setInterval(() => {
-      setFiles((prev) =>
-        prev.map((f) => {
-          if (f.id === uploadFile.id) {
-            const newProgress = Math.min(f.progress + Math.random() * 20, 100)
-            return {
-              ...f,
-              progress: newProgress,
-              status: newProgress >= 100 ? "complete" : "uploading",
-            }
-          }
-          return f
-        })
-      )
-    }, 300)
-
-    setTimeout(() => {
-      clearInterval(interval)
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.id === uploadFile.id ? { ...f, progress: 100, status: "complete" } : f
-        )
-      )
-    }, 3000)
-  }
-
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
 
     const droppedFiles = Array.from(e.dataTransfer.files)
-    droppedFiles.forEach(simulateUpload)
+    droppedFiles.forEach(uploadFileToBackend)
   }, [])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files
     if (selectedFiles) {
-      Array.from(selectedFiles).forEach(simulateUpload)
+      Array.from(selectedFiles).forEach(uploadFileToBackend)
     }
   }
 
@@ -114,10 +134,12 @@ export function UploadZone() {
         <p className="mt-1 text-sm text-muted-foreground text-center">
           or tap to browse from your device
         </p>
+
+        {/* ✅ IMPORTANT: match backend allowed types */}
         <input
           type="file"
           multiple
-          accept=".pdf,.doc,.docx,.txt,.xlsx,.csv,.png,.jpg,.jpeg"
+          accept=".pdf,.docx,.txt"
           onChange={handleFileSelect}
           className="absolute inset-0 cursor-pointer opacity-0"
         />
@@ -127,7 +149,7 @@ export function UploadZone() {
           </Button>
         </div>
         <p className="mt-4 text-xs text-muted-foreground text-center px-2">
-          PDF, DOC, DOCX, TXT, XLSX, CSV, PNG, JPG
+          PDF, DOCX, TXT (Max 10MB)
         </p>
       </div>
 
@@ -150,10 +172,13 @@ export function UploadZone() {
                   </p>
                   <div className="flex items-center gap-2">
                     {file.status === "complete" && (
-                      <CheckCircle2 className="h-4 w-4 text-primary" />
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
                     )}
                     {file.status === "uploading" && (
                       <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                    {file.status === "error" && (
+                      <span className="text-xs text-red-500">Failed</span>
                     )}
                     <Button
                       variant="ghost"
@@ -162,7 +187,6 @@ export function UploadZone() {
                       onClick={() => removeFile(file.id)}
                     >
                       <X className="h-4 w-4" />
-                      <span className="sr-only">Remove</span>
                     </Button>
                   </div>
                 </div>
