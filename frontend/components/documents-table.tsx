@@ -111,6 +111,39 @@ export function DocumentsTable() {
     )
   }
 
+  const handleDelete = async (id: string) => {
+    // ✅ Confirmation FIRST
+    if (!confirm("Are you sure you want to delete this document?")) return
+    const token = localStorage.getItem("token")
+
+    // 🔥 Save previous state for rollback
+    const previousDocs = documents
+
+    // 🔥 Optimistic update
+    setDocuments((prev) => prev.filter((doc) => doc.id !== id))
+
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/documents/${id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (!res.ok) {
+        throw new Error("Delete failed")
+      }
+
+    } catch (err) {
+      console.error(err)
+
+      // ❌ Rollback if error
+      setDocuments(previousDocs)
+    }
+  }
   return (
     <>
       {/* Desktop */}
@@ -143,8 +176,8 @@ export function DocumentsTable() {
                 doc.size < 1024
                   ? `${doc.size} B`
                   : doc.size < 1024 * 1024
-                  ? `${(doc.size / 1024).toFixed(1)} KB`
-                  : `${(doc.size / (1024 * 1024)).toFixed(1)} MB`
+                    ? `${(doc.size / 1024).toFixed(1)} KB`
+                    : `${(doc.size / (1024 * 1024)).toFixed(1)} MB`
 
               const formattedDate = new Date(doc.uploadedAt).toLocaleDateString()
 
@@ -206,7 +239,7 @@ export function DocumentsTable() {
 
                         <DropdownMenuSeparator />
 
-                        <DropdownMenuItem className="text-destructive">
+                        <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(doc.id)}>
                           <Trash2 className="mr-2 h-4 w-4" />
                           Delete
                         </DropdownMenuItem>
@@ -231,8 +264,8 @@ export function DocumentsTable() {
             doc.size < 1024
               ? `${doc.size} B`
               : doc.size < 1024 * 1024
-              ? `${(doc.size / 1024).toFixed(1)} KB`
-              : `${(doc.size / (1024 * 1024)).toFixed(1)} MB`
+                ? `${(doc.size / 1024).toFixed(1)} KB`
+                : `${(doc.size / (1024 * 1024)).toFixed(1)} MB`
 
           const formattedDate = new Date(doc.uploadedAt).toLocaleDateString()
 

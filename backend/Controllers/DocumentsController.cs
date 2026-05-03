@@ -133,5 +133,34 @@ namespace AI.DocumentAssistant.API.Controllers
 
             return Ok(documents);
         }
+
+        [Authorize]
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(Guid id)
+        {
+            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (userIdString == null)
+                return Unauthorized();
+
+            var userId = Guid.Parse(userIdString);
+
+            var document = await _context.Documents
+                .FirstOrDefaultAsync(d => d.Id == id && d.UserId == userId);
+
+            if (document == null)
+                return NotFound();
+
+            // 🔥 Remove chunks first
+            var chunks = _context.DocumentChunks.Where(c => c.DocumentId == id);
+            _context.DocumentChunks.RemoveRange(chunks);
+
+            // 🔥 Remove document
+            _context.Documents.Remove(document);
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Deleted successfully" });
+        }
     }
 }
