@@ -4,6 +4,8 @@ using AI.DocumentAssistant.API.Data;
 using AI.DocumentAssistant.API.DTOs;
 using AI.DocumentAssistant.API.Models;
 using AI.DocumentAssistant.API.Services;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace AI.DocumentAssistant.API.Controllers
 {
@@ -21,23 +23,39 @@ namespace AI.DocumentAssistant.API.Controllers
             _embeddingService = embeddingService;
             _aiService = aiService;
         }
-
+        [Authorize]
         [HttpPost("ask")]
         public async Task<IActionResult> Ask([FromBody] AskRequest request)
         {
+            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (userIdString == null)
+                return Unauthorized();
+
+            var userId = Guid.Parse(userIdString);
+
             if (string.IsNullOrEmpty(request.Question))
                 return BadRequest("Question is required");
 
             // 🔥 STEP 1: Get or create chat
-            var chat = await _context.Chats
-                .FirstOrDefaultAsync(c => c.Id == request.ChatId);
+            Chat chat;
+
+            if (request.ChatId.HasValue)
+            {
+                chat = await _context.Chats
+                    .FirstOrDefaultAsync(c => c.Id == request.ChatId.Value);
+            }
+            else
+            {
+                chat = null;
+            }
 
             if (chat == null)
             {
                 chat = new Chat
                 {
                     Id = Guid.NewGuid(),
-                    UserId = request.UserId
+                    UserId = userId
                 };
 
                 _context.Chats.Add(chat);
@@ -71,7 +89,7 @@ namespace AI.DocumentAssistant.API.Controllers
 
             // 🔥 STEP 5: RAG search (your existing logic)
             var chunks = await _context.DocumentChunks
-                .Where(c => c.Document.UserId == request.UserId)
+                .Where(c => c.Document.UserId == userId)
                 .ToListAsync();
 
             var context = string.Join("\n\n", chunks
