@@ -15,6 +15,11 @@ namespace AI.DocumentAssistant.API.Data
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email)
                 .IsUnique();
+
+            // AppDbContext.cs - OnModelCreating
+            modelBuilder.Entity<DocumentChunk>()
+                .Property(c => c.ChunkIndex)
+                .HasColumnType("integer");
         }
 
         public DbSet<User> Users { get; set; }
