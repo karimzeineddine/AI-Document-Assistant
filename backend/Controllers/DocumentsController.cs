@@ -5,6 +5,7 @@ using AI.DocumentAssistant.API.Helpers;
 using AI.DocumentAssistant.API.Services;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 
 namespace AI.DocumentAssistant.API.Controllers
 {
@@ -104,6 +105,33 @@ namespace AI.DocumentAssistant.API.Controllers
                 message = "File uploaded & processed",
                 documentId = document.Id
             });
+        }
+
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> GetUserDocuments()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (userIdClaim == null)
+                return Unauthorized();
+
+            var userId = Guid.Parse(userIdClaim);
+
+            var documents = await _context.Documents
+                .Where(d => d.UserId == userId)
+                .OrderByDescending(d => d.CreatedAt)
+                .Select(d => new
+                {
+                    id = d.Id,
+                    name = d.FileName,
+                    size = d.Content.Length, // optional (better later: store size)
+                    uploadedAt = d.CreatedAt,
+                    status = d.Status
+                })
+                .ToListAsync();
+
+            return Ok(documents);
         }
     }
 }
