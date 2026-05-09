@@ -87,21 +87,27 @@ namespace AI.DocumentAssistant.API.Controllers
                 Content = m.Content
             }).ToList();
 
-            // 🔥 STEP 5: RAG search (your existing logic)
+            // 🔥 STEP 5: RAG search - get all chunks for this user's documents
             var chunks = await _context.DocumentChunks
                 .Where(c => c.Document.UserId == userId)
+                .OrderBy(c => c.DocumentId)
+                .ThenBy(c => c.ChunkIndex)
                 .ToListAsync();
 
-            var context = string.Join("\n\n", chunks
-                .Where(c => c.Content.ToLower().Contains(request.Question.ToLower()))
-                .Take(3)
+            Console.WriteLine($"Total chunks found: {chunks.Count}"); // ← debug log
+
+            // Take the most relevant chunks (increase limit if needed)
+            var contextText = string.Join("\n\n", chunks
+                .Take(10)                        // ← removed the keyword filter
                 .Select(c => c.Content));
 
             // Inject context
             messages.Insert(0, new ChatMessageDto
             {
                 Role = "system",
-                Content = $"Use this context to answer:\n{context}"
+                Content = string.IsNullOrEmpty(contextText)
+                    ? "You are a helpful document assistant. No documents have been uploaded yet."
+                    : $"You are a helpful document assistant. Answer questions based on the following document content:\n\n{contextText}\n\nIf the answer is not in the documents, say so clearly."
             });
 
             // 🔥 STEP 6: Call AI (you already have this)
