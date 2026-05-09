@@ -50,7 +50,7 @@ const mainNavItems = [
   },
   {
     title: "Chat",
-    url: "/dashboard/chat",
+    url: "/dashboard/chat/new",
     icon: MessageSquare,
   },
 ]

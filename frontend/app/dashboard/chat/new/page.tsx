@@ -46,7 +46,7 @@ export default function NewChatPage() {
     // Simulate creating a new chat and redirect
     await new Promise((resolve) => setTimeout(resolve, 500))
     // In a real app, this would create a chat and redirect to it
-    router.push("/dashboard/chat")
+    router.push(`/dashboard/chat?question=${encodeURIComponent(input)}`)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
