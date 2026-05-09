@@ -53,7 +53,7 @@ export default function DashboardPage() {
             {/* Quick Actions */}
             <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               <Link 
-                href="/dashboard/chat"
+                href="/dashboard/chat/new"
                 className="group flex items-center gap-3 sm:gap-4 rounded-xl border border-border bg-card p-4 sm:p-6 transition-colors hover:border-primary/50 hover:bg-muted/50"
               >
                 <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10">

@@ -14,11 +14,21 @@ interface Message {
   timestamp: Date
 }
 
-export function ChatInterface({ initialQuestion }: { initialQuestion?: string }) {
-  const [messages, setMessages] = useState<Message[]>([])
+interface ChatInterfaceProps {
+  initialQuestion?: string
+  initialMessages?: Message[]
+  currentChatId?: string | null
+}
+
+export function ChatInterface({
+  initialQuestion,
+  initialMessages = [],
+  currentChatId: initialChatId = null,
+}: ChatInterfaceProps){
+  const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [currentChatId, setCurrentChatId] = useState<string | null>(null)
+  const [currentChatId, setCurrentChatId] = useState<string | null>(initialChatId)
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
