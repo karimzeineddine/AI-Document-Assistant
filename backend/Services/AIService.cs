@@ -50,4 +50,23 @@ public class AIService
 
         return answer;
     }
+    public async Task<string> GenerateChatTitle(string question, string answer)
+    {
+        var prompt = $@"Generate a very short title (max 5 words) for this conversation.
+
+        Question: {question}
+
+        Answer: {answer}
+
+        Return ONLY the title, no quotes, no punctuation.";
+
+        var messages = new List<ChatMessageDto>
+    {
+        new ChatMessageDto { Role = "user", Content = prompt }
+    };
+
+        var title = await GenerateAnswer(messages);
+
+        return title?.Trim() ?? "New Chat";
+    }
 }

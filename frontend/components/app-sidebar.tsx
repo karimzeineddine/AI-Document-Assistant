@@ -13,7 +13,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-
+import { useEffect, useState } from "react"
 import {
   Sidebar,
   SidebarContent,
@@ -55,20 +55,54 @@ const mainNavItems = [
   },
 ]
 
-const recentChats = [
-  { title: "Employee handbook questions", id: "1" },
-  { title: "Q4 financial report", id: "2" },
-  { title: "Product roadmap 2024", id: "3" },
-]
-
 export function AppSidebar() {
   const pathname = usePathname()
   const router = useRouter()
-
+  const [recentChats, setRecentChats] = useState<
+    { id: string; title: string }[]
+  >([])
+  
 const handleLogout = () => {
   logout()
   router.push("/")
 }
+useEffect(() => {
+  const fetchChats = async () => {
+    try {
+      const token = localStorage.getItem("token")
+
+      console.log("TOKEN:", token)
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/search/chat`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (!res.ok) {
+        const errorText = await res.text()
+
+        console.error("STATUS:", res.status)
+        console.error("ERROR:", errorText)
+
+        throw new Error("Failed to fetch chats")
+      }
+
+      const data = await res.json()
+
+      console.log("CHATS:", data)
+
+      setRecentChats(data)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  fetchChats()
+}, [])
   return (
     <Sidebar className="border-r border-sidebar-border">
       <SidebarHeader className="p-4">
