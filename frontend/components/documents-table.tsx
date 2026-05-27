@@ -144,6 +144,34 @@ export function DocumentsTable() {
       setDocuments(previousDocs)
     }
   }
+
+  const handleView = async (id: string) => {
+  try {
+    const token = localStorage.getItem("token")
+
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/documents/${id}/view`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    )
+
+    if (!res.ok) {
+      throw new Error("Failed to load document")
+    }
+
+    const blob = await res.blob()
+
+    const fileUrl = URL.createObjectURL(blob)
+
+    window.open(fileUrl, "_blank")
+
+  } catch (err) {
+    console.error(err)
+  }
+}
   return (
     <>
       {/* Desktop */}
@@ -222,7 +250,7 @@ export function DocumentsTable() {
                       </DropdownMenuTrigger>
 
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleView(doc.id)}>
                           <Eye className="mr-2 h-4 w-4" />
                           View
                         </DropdownMenuItem>

@@ -6,6 +6,8 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
+
 
 namespace AI.DocumentAssistant.API.Controllers
 {
@@ -117,6 +119,28 @@ namespace AI.DocumentAssistant.API.Controllers
                 email = user.Email,
                 fullName = user.FullName
             });
+        }
+
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> GetUser()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (userIdClaim == null)
+                return Unauthorized();
+
+            var userId = Guid.Parse(userIdClaim);
+
+            var user = await _context.Users
+                .Where(u => u.Id == userId)
+                .Select(u => new { u.FullName, u.Email })   // ← only what the UI needs
+                .FirstOrDefaultAsync();                  // ← FirstOrDefault, not ToList
+
+            if (user == null)
+                return NotFound();
+
+            return Ok(user);
         }
     }
 }
