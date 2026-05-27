@@ -16,7 +16,7 @@ export default function DocumentsPage() {
           description="Browse and manage your document library"
           action={
             <Button asChild size="sm">
-              <Link href="/upload">
+              <Link href="/dashboard/upload">
                 <Upload className="mr-2 h-4 w-4" />
                 Upload Document
               </Link>

@@ -22,7 +22,8 @@ namespace AI.DocumentAssistant.API.Controllers
             _context = context;
             _embeddingService = embeddingService;
         }
-
+        
+        [Authorize]
         [HttpPost("upload")]
         public async Task<IActionResult> Upload(IFormFile file)
         {
@@ -151,8 +152,21 @@ namespace AI.DocumentAssistant.API.Controllers
             if (document == null)
                 return NotFound();
 
-            // 🔥 Remove chunks first
-            var chunks = _context.DocumentChunks.Where(c => c.DocumentId == id);
+            // 🔥 DELETE PHYSICAL FILE
+            var fullPath = Path.Combine(
+                Directory.GetCurrentDirectory(),
+                document.FilePath
+            );
+
+            if (System.IO.File.Exists(fullPath))
+            {
+                System.IO.File.Delete(fullPath);
+            }
+
+            // 🔥 Remove chunks
+            var chunks = _context.DocumentChunks
+                .Where(c => c.DocumentId == id);
+
             _context.DocumentChunks.RemoveRange(chunks);
 
             // 🔥 Remove document
@@ -160,7 +174,53 @@ namespace AI.DocumentAssistant.API.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Deleted successfully" });
+            return Ok(new
+            {
+                message = "Deleted successfully"
+            });
+        }
+
+        [Authorize]
+        [HttpGet("{id}/view")]
+        public async Task<IActionResult> ViewDocument(Guid id)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (userIdClaim == null)
+                return Unauthorized();
+
+            var userId = Guid.Parse(userIdClaim);
+
+            // 🔥 Find document belonging to current user
+            var document = await _context.Documents
+                .FirstOrDefaultAsync(d => d.Id == id && d.UserId == userId);
+
+            if (document == null)
+                return NotFound("Document not found");
+
+            // 🔥 Build physical file path
+            var filePath = Path.Combine(
+                Directory.GetCurrentDirectory(),
+                document.FilePath
+            );
+
+            // 🔥 Check file exists
+            if (!System.IO.File.Exists(filePath))
+                return NotFound("File missing from server");
+
+            // 🔥 Detect content type
+            var extension = Path.GetExtension(document.FileName).ToLower();
+
+            var contentType = extension switch
+            {
+                ".pdf" => "application/pdf",
+                ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                ".txt" => "text/plain",
+                _ => "application/octet-stream"
+            };
+
+            // 🔥 Return actual file
+            return PhysicalFile(filePath, contentType, document.FileName);
         }
     }
 }

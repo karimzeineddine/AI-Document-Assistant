@@ -103,6 +103,46 @@ useEffect(() => {
 
   fetchChats()
 }, [])
+
+interface User {
+  fullName: string;
+  email: string;
+}
+const [user, setUser] = useState<User | null>(null);
+
+useEffect(() => {
+  const fetchUser = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("STATUS:", res.status);
+        console.error("ERROR:", errorText);
+        throw new Error("Failed to fetch user");
+      }
+
+      const data = await res.json();
+      setUser(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  fetchUser();
+}, []);
+
+const initials = user?.fullName
+  .split(" ")
+  .map((n) => n[0])
+  .join("")
+  .toUpperCase() ?? "??";
   return (
     <Sidebar className="border-r border-sidebar-border">
       <SidebarHeader className="p-4">
@@ -203,12 +243,17 @@ useEffect(() => {
           <SidebarMenuItem>
             <SidebarMenuButton className="h-auto py-2">
               <Avatar className="h-6 w-6">
-                <AvatarImage src="/placeholder-user.jpg" alt="User" />
-                <AvatarFallback className="text-xs">JD</AvatarFallback>
+                <AvatarFallback className="text-xs">{initials}</AvatarFallback>
               </Avatar>
               <div className="flex flex-col items-start">
-                <span className="text-sm font-medium">John Doe</span>
-                <span className="text-xs text-muted-foreground">john@company.com</span>
+                {user ? (
+                  <>
+                    <span className="text-sm font-medium">{user.fullName}</span>
+                    <span className="text-xs text-muted-foreground">{user.email}</span>
+                  </>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Loading...</span>
+                )}
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
