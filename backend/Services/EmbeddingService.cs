@@ -13,22 +13,19 @@ namespace AI.DocumentAssistant.API.Services
         {
             _httpClient = new HttpClient();
             _apiKey = config["OpenRouter:ApiKey"]
-                ?? throw new Exception("OpenRouter API key missing");
+                    ?? throw new Exception("OpenRouter API key missing");
         }
 
         public async Task<List<float>> GetEmbedding(string text)
         {
             var requestBody = new
             {
-                model = "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+                model = "text-embedding-3-small",
                 input = text
             };
 
             var request = new HttpRequestMessage(HttpMethod.Post, "https://openrouter.ai/api/v1/embeddings");
-
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-            request.Headers.Add("HTTP-Referer", "http://localhost");
-            request.Headers.Add("X-Title", "AI Document Assistant");
 
             request.Content = new StringContent(
                 JsonSerializer.Serialize(requestBody),
@@ -39,9 +36,6 @@ namespace AI.DocumentAssistant.API.Services
             var response = await _httpClient.SendAsync(request);
             var json = await response.Content.ReadAsStringAsync();
 
-            Console.WriteLine(json); // 🔥 DEBUG
-            Console.WriteLine("API KEY: " + _apiKey);
-            Console.WriteLine(request.Headers.Authorization);
             using var doc = JsonDocument.Parse(json);
 
             if (!doc.RootElement.TryGetProperty("data", out var data))
