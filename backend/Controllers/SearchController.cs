@@ -38,7 +38,7 @@ namespace AI.DocumentAssistant.API.Controllers
             if (string.IsNullOrWhiteSpace(request.Question))
                 return BadRequest("Question is required");
 
-            // 🔥 STEP 1: Get or create chat
+            // STEP 1: Get or create chat
             Chat? chat = null;
 
             if (request.ChatId.HasValue)
@@ -55,7 +55,7 @@ namespace AI.DocumentAssistant.API.Controllers
                 {
                     Id = Guid.NewGuid(),
                     UserId = userId,
-                    Title = "", // will generate later
+                    Title = "",
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -64,7 +64,7 @@ namespace AI.DocumentAssistant.API.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            // 🔥 STEP 2: Save user message
+            // STEP 2: Save user message
             _context.Messages.Add(new Message
             {
                 ChatId = chat.Id,
@@ -74,10 +74,9 @@ namespace AI.DocumentAssistant.API.Controllers
             });
 
             chat.UpdatedAt = DateTime.UtcNow;
-
             await _context.SaveChangesAsync();
 
-            // 🔥 STEP 3: Get recent chat history
+            // STEP 3: Get recent chat history
             var history = await _context.Messages
                 .Where(m => m.ChatId == chat.Id)
                 .OrderByDescending(m => m.CreatedAt)
@@ -85,30 +84,36 @@ namespace AI.DocumentAssistant.API.Controllers
                 .OrderBy(m => m.CreatedAt)
                 .ToListAsync();
 
-            // 🔥 STEP 4: Convert to AI format
+            // STEP 4: Convert to AI format
             var messages = history.Select(m => new ChatMessageDto
             {
-                Role = m.Role == Message.MessageRole.User
-                    ? "user"
-                    : "assistant",
-
+                Role = m.Role == Message.MessageRole.User ? "user" : "assistant",
                 Content = m.Content
             }).ToList();
 
-            // 🔥 STEP 5: Get document chunks (RAG)
-            var chunks = await _context.DocumentChunks
+            // STEP 5: Vector search across all of the user's chunks
+            var questionEmbedding = await _embeddingService.GetEmbedding(request.Question);
+
+            var allChunks = await _context.DocumentChunks
                 .Where(c => c.Document.UserId == userId)
-                .OrderBy(c => c.DocumentId)
-                .ThenBy(c => c.ChunkIndex)
-                .Take(10)
                 .ToListAsync();
 
-            var contextText = string.Join(
-                "\n\n",
-                chunks.Select(c => c.Content)
-            );
+            const int topK = 5;
 
-            // 🔥 STEP 6: Inject system prompt
+            var topChunks = allChunks
+                .Select(c => new
+                {
+                    Chunk = c,
+                    Score = VectorMath.CosineSimilarity(questionEmbedding, c.Embedding)
+                })
+                .OrderByDescending(x => x.Score)
+                .Take(topK)
+                .Select(x => x.Chunk)
+                .ToList();
+
+            var contextText = string.Join("\n\n", topChunks.Select(c => c.Content));
+
+            // STEP 6: Inject system prompt
             messages.Insert(0, new ChatMessageDto
             {
                 Role = "system",
@@ -127,10 +132,10 @@ say clearly that the information does not exist in the uploaded files.
 "
             });
 
-            // 🔥 STEP 7: Generate AI response
+            // STEP 7: Generate AI response
             var aiAnswer = await _aiService.GenerateAnswer(messages);
 
-            // 🔥 STEP 8: Save AI response
+            // STEP 8: Save AI response
             _context.Messages.Add(new Message
             {
                 ChatId = chat.Id,
@@ -139,24 +144,19 @@ say clearly that the information does not exist in the uploaded files.
                 CreatedAt = DateTime.UtcNow
             });
 
-            // 🔥 STEP 9: Generate title ONLY once
+            // STEP 9: Generate title once
             if (string.IsNullOrWhiteSpace(chat.Title))
             {
-                var generatedTitle = await _aiService.GenerateChatTitle(
-                    request.Question,
-                    aiAnswer
-                );
-
+                var generatedTitle = await _aiService.GenerateChatTitle(request.Question, aiAnswer);
                 chat.Title = string.IsNullOrWhiteSpace(generatedTitle)
                     ? request.Question[..Math.Min(40, request.Question.Length)]
                     : generatedTitle;
             }
 
             chat.UpdatedAt = DateTime.UtcNow;
-
             await _context.SaveChangesAsync();
 
-            // 🔥 STEP 10: Return response
+            // STEP 10: Return response
             return Ok(new
             {
                 chatId = chat.Id,
