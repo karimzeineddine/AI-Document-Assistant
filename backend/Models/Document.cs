@@ -10,7 +10,9 @@ namespace AI.DocumentAssistant.API.Models
 
         public string Status { get; set; } = null!;
 
-        public string? Content { get; set; } // 🔥 NEW
+        public string? Content { get; set; }
+
+        public long FileSizeBytes { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
