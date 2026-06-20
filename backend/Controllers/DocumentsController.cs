@@ -72,7 +72,8 @@ namespace AI.DocumentAssistant.API.Controllers
                 FileName = file.FileName,
                 FilePath = $"Uploads/{fileName}",
                 UserId = userId,
-                Status = "Ready", // 🔥 now ready immediately
+                Status = "Ready", 
+                FileSizeBytes = file.Length,
                 Content = extractedText
             };
 
@@ -126,7 +127,7 @@ namespace AI.DocumentAssistant.API.Controllers
                 {
                     id = d.Id,
                     name = d.FileName,
-                    size = d.Content.Length, // optional (better later: store size)
+                    size = d.FileSizeBytes,
                     uploadedAt = d.CreatedAt,
                     status = d.Status
                 })
